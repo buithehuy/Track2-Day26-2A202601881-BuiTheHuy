@@ -1139,10 +1139,8 @@ if __name__ == "__main__":
         f"(positive AND near_miss): got recall={report['per_class']['enforcement_failure']['recall']}"
     )
     assert report["precision"] == 1.0, f"a detector that never files a false claim must show precision 1.0, got {report['precision']}"
-    assert report["recall"] < 0.15, (
-        f"a starter that implements exactly ONE of 17 classes should show LOW overall recall, got {report['recall']:.3f} "
-        "-- if this is high, either a hook stopped being a no-op or a fixture's ground truth is wrong"
-    )
-    print(f"\n  starter shape confirmed: precision={report['precision']:.3f} (perfect -- it never guesses wrong), "
-          f"recall={report['recall']:.3f} (low -- 16 of 17 classes are still stub hooks). This is expected and correct.")
+    assert report["recall"] > 0.059, f"recall below the submission floor: {report['recall']:.3f}"
+    assert report["false_claim_rate"] == 0.0, f"false claim rate must be zero: {report['false_claim_rate']:.3f}"
+    print(f"\n  prosecutor shape confirmed: precision={report['precision']:.3f}, "
+          f"recall={report['recall']:.3f}, false_claim_rate={report['false_claim_rate']:.3f}.")
     print("\nAll eval/prosecute.py demos passed.")
