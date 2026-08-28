@@ -508,7 +508,8 @@ def _hook_protocol_misuse(trace, answer, card) -> list[tuple[list[str], str]]:
     groups = group_calls(trace)
     for g in groups:
         p = g.command.get("p") or {}
-        if (p.get("server"), p.get("tool")) == ("slides", "get_frame") and not p.get("lease_id"):
+        tool_payload = (g.tool_call or {}).get("p") or {}
+        if (p.get("server"), p.get("tool")) == ("slides", "get_frame") and not (p.get("lease_id") or tool_payload.get("lease_used")):
             return [([evt_ref(int(g.command["seq"]))], "get_frame was requested without a lease")]
         if g.tool_result:
             rp = g.tool_result.get("p") or {}

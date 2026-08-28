@@ -114,6 +114,7 @@ except ImportError:  # pragma: no cover - collaborator file
 
 from agent.telemetry import RecordingGatewayContext, Telemetry
 from agent.strategy import cheap_mask, successor_of
+from agent.guardrails import scan_for_injected_instructions
 
 try:
     from kit.mcp.specs import TOOL_SPECS, cost_of
@@ -407,6 +408,18 @@ class Gateway:
         spec = TOOL_SPECS.get((routed.server, routed.tool)) if TOOL_SPECS else None
         if spec is None:
             return self.deny(cmd, "unknown tool is not admitted")
+        # Trust-boundary signals are headers/structured metadata, never prose.
+        # A forged fingerprint/card or an explicitly unverified peer must not
+        # reach the tool layer merely because the rest of the command is valid.
+        if str(routed.headers.get("x-server-fingerprint", "")).casefold() in {"unvouched", "invalid", "forged"}:
+            return self.deny(cmd, "server fingerprint is not vouched by the registry")
+        if str(routed.headers.get("x-card-signature", "")).casefold() in {"invalid", "forged", "unverified"}:
+            return self.deny(cmd, "agent card signature is not verified")
+        if routed.args.get("peer_unverified") is True:
+            return self.deny(cmd, "peer result is explicitly unverified")
+        injected_blob = " ".join(str(v) for v in routed.args.values())
+        if scan_for_injected_instructions(injected_blob).suspicious:
+            return self.deny(cmd, "instruction-shaped content is treated as untrusted data")
         if spec.needs_lease and routed.lease_id not in tuple(self.ctx.leases):
             return self.deny(cmd, "get_frame requires a live lease")
         retry_key = (routed.server, routed.tool, repr((routed.args, routed.fields)))
