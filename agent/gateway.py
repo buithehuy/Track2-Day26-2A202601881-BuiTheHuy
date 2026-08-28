@@ -442,6 +442,13 @@ class Gateway:
         if target is not None and str(target) != str(self.ctx.act):
             return self.deny(cmd, "target learner is outside the authenticated act")
         if routed.kind == "a2a":
+            allowed_skills = {
+                "curriculum-analyst": {"which_days_cover"},
+                "citation-checker": {"verify_source"},
+                "roster": {"lookup_learner"},
+            }
+            if routed.server not in allowed_skills or routed.tool not in allowed_skills[routed.server]:
+                return self.deny(cmd, "A2A skill is not allow-listed for this peer")
             act = routed.headers.get("act") or routed.headers.get("x-act")
             aud = routed.headers.get("aud") or routed.headers.get("x-aud")
             if act is not None and str(act) != str(self.ctx.act):
